@@ -90,7 +90,7 @@ func ExpandPipeline(c *gin.Context) {
 	compiler := compiler.FromContext(c).Duplicate().WithMetadata(m).WithRepo(r).WithUser(u)
 
 	// parse the pipeline configuration
-	pipeline, err := compiler.Parse(p.GetData())
+	pipeline, _, err := compiler.Parse(p.GetData())
 	if err != nil {
 		util.HandleError(c, http.StatusBadRequest,
 			fmt.Errorf("unable to parse pipeline %s: %v", entry, err),

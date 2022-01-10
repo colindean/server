@@ -345,8 +345,11 @@ func PostWebhook(c *gin.Context) {
 		return
 	}
 
-	// variable to store pipeline
-	var p *pipeline.Build
+	// variables to store pipeline configuration
+	var (
+		p        *pipeline.Build
+		pipeline *library.Pipeline
+	)
 	// number of times to retry
 	retryLimit := 3
 
@@ -393,7 +396,7 @@ func PostWebhook(c *gin.Context) {
 		}
 
 		// parse and compile the pipeline configuration file
-		p, err = compiler.FromContext(c).
+		p, pipeline, err = compiler.FromContext(c).
 			Duplicate().
 			WithBuild(b).
 			WithComment(webhook.Comment).
@@ -411,6 +414,21 @@ func PostWebhook(c *gin.Context) {
 
 			retErr := fmt.Errorf("%s: %v", baseErr, err)
 			util.HandleError(c, http.StatusInternalServerError, retErr)
+
+			h.SetStatus(constants.StatusFailure)
+			h.SetError(retErr.Error())
+
+			return
+		}
+
+		pipeline.SetRepoID(r.GetID())
+		pipeline.SetRef(b.GetRef())
+
+		// send API call to create the pipeline
+		err = database.FromContext(c).CreatePipeline(pipeline)
+		if err != nil {
+			retErr := fmt.Errorf("%s: failed to create pipeline for %s: %v", baseErr, r.GetFullName(), err)
+			util.HandleError(c, http.StatusBadRequest, retErr)
 
 			h.SetStatus(constants.StatusFailure)
 			h.SetError(retErr.Error())
