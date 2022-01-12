@@ -250,7 +250,7 @@ func CreateBuild(c *gin.Context) {
 	}
 
 	// parse and compile the pipeline configuration file
-	p, err := compiler.FromContext(c).
+	p, pipeline, err := compiler.FromContext(c).
 		WithBuild(input).
 		WithFiles(files).
 		WithMetadata(m).
@@ -262,6 +262,19 @@ func CreateBuild(c *gin.Context) {
 		retErr := fmt.Errorf("unable to compile pipeline configuration for %s/%d: %w", r.GetFullName(), input.GetNumber(), err)
 
 		util.HandleError(c, http.StatusInternalServerError, retErr)
+
+		return
+	}
+
+	pipeline.SetRepoID(r.GetID())
+	pipeline.SetRef(input.GetRef())
+
+	// send API call to create the pipeline
+	err = database.FromContext(c).CreatePipeline(pipeline)
+	if err != nil {
+		retErr := fmt.Errorf("failed to create pipeline for %s/%d: %v", r.GetFullName(), input.GetNumber(), err)
+
+		util.HandleError(c, http.StatusBadRequest, retErr)
 
 		return
 	}
@@ -949,24 +962,24 @@ func RestartBuild(c *gin.Context) {
 		}
 	}
 
-	// send API call to capture the pipeline configuration file
-	config, err := scm.FromContext(c).ConfigBackoff(u, r, b.GetCommit())
+	// send API call to capture the pipeline
+	pipeline, err := database.FromContext(c).GetPipeline(b.GetRef(), r)
 	if err != nil {
-		retErr := fmt.Errorf("unable to get pipeline configuration for %s: %w", entry, err)
+		retErr := fmt.Errorf("unable to get pipeline for %s: %w", entry, err)
 
-		util.HandleError(c, http.StatusNotFound, retErr)
+		util.HandleError(c, http.StatusBadRequest, retErr)
 
 		return
 	}
 
 	// parse and compile the pipeline configuration file
-	p, err := compiler.FromContext(c).
+	p, _, err := compiler.FromContext(c).
 		WithBuild(b).
 		WithFiles(files).
 		WithMetadata(m).
 		WithRepo(r).
 		WithUser(u).
-		Compile(config)
+		Compile(pipeline.GetData())
 	if err != nil {
 		retErr := fmt.Errorf("unable to compile pipeline configuration for %s: %w", entry, err)
 
