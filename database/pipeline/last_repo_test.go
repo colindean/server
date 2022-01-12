@@ -12,7 +12,7 @@ import (
 	"github.com/go-vela/types/library"
 )
 
-func TestPipeline_Engine_ListPipelines(t *testing.T) {
+func TestPipeline_Engine_LastPipelineForRepo(t *testing.T) {
 	// setup types
 	_pipelineOne := testPipeline()
 	_pipelineOne.SetID(1)
@@ -36,12 +36,11 @@ func TestPipeline_Engine_ListPipelines(t *testing.T) {
 	// create expected result in mock
 	_rows := sqlmock.NewRows(
 		[]string{"id", "repo_id", "number", "flavor", "platform", "ref", "version", "services", "stages", "steps", "templates", "data"}).
-		AddRow(1, 1, 1, "", "", "refs/heads/master", "1", false, false, false, false, []byte{120, 94, 74, 203, 207, 7, 4, 0, 0, 255, 255, 2, 130, 1, 69}).
 		AddRow(2, 1, 2, "", "", "refs/heads/main", "1", false, false, false, false, []byte{120, 94, 74, 203, 207, 7, 4, 0, 0, 255, 255, 2, 130, 1, 69})
 
 	// ensure the mock expects the query
-	_mock.ExpectQuery(`SELECT * FROM "pipelines"`).
-		WillReturnRows(_rows)
+	_mock.ExpectQuery(`SELECT * FROM "pipelines" WHERE repo_id = $1 ORDER BY number DESC LIMIT 1`).
+		WithArgs(1).WillReturnRows(_rows)
 
 	_sqlite := testSqlite(t)
 	defer func() { _sql, _ := _sqlite.client.DB(); _sql.Close() }()
@@ -61,40 +60,40 @@ func TestPipeline_Engine_ListPipelines(t *testing.T) {
 		failure  bool
 		name     string
 		database *engine
-		want     []*library.Pipeline
+		want     *library.Pipeline
 	}{
 		{
 			failure:  false,
 			name:     "postgres",
 			database: _postgres,
-			want:     []*library.Pipeline{_pipelineOne, _pipelineTwo},
+			want:     _pipelineTwo,
 		},
 		{
 			failure:  false,
 			name:     "sqlite",
 			database: _sqlite,
-			want:     []*library.Pipeline{_pipelineOne, _pipelineTwo},
+			want:     _pipelineTwo,
 		},
 	}
 
 	// run tests
 	for _, test := range tests {
-		got, err := test.database.ListPipelines()
+		got, err := test.database.LastPipelineForRepo(&library.Repo{ID: _pipelineOne.RepoID})
 
 		if test.failure {
 			if err == nil {
-				t.Errorf("ListPipelines for %s should have returned err", test.name)
+				t.Errorf("LastPipelineForRepo for %s should have returned err", test.name)
 			}
 
 			continue
 		}
 
 		if err != nil {
-			t.Errorf("ListPipelines for %s returned err: %v", test.name, err)
+			t.Errorf("LastPipelineForRepo for %s returned err: %v", test.name, err)
 		}
 
 		if !reflect.DeepEqual(got, test.want) {
-			t.Errorf("ListPipelines for %s is %v, want %v", test.name, got, test.want)
+			t.Errorf("LastPipelineForRepo for %s is %v, want %v", test.name, got, test.want)
 		}
 	}
 }

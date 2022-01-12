@@ -5,12 +5,14 @@
 package pipeline
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-vela/types/library"
 )
 
-func TestPipeline_Engine_UpdatePipeline(t *testing.T) {
+func TestPipeline_Engine_GetPipelineForRepo(t *testing.T) {
 	// setup types
 	_pipeline := testPipeline()
 	_pipeline.SetID(1)
@@ -18,16 +20,19 @@ func TestPipeline_Engine_UpdatePipeline(t *testing.T) {
 	_pipeline.SetNumber(1)
 	_pipeline.SetRef("refs/heads/master")
 	_pipeline.SetVersion("1")
+	_pipeline.SetData([]byte("foo"))
 
 	_postgres, _mock := testPostgres(t)
 	defer func() { _sql, _ := _postgres.client.DB(); _sql.Close() }()
 
+	// create expected result in mock
+	_rows := sqlmock.NewRows(
+		[]string{"id", "repo_id", "number", "flavor", "platform", "ref", "version", "services", "stages", "steps", "templates", "data"}).
+		AddRow(1, 1, 1, "", "", "refs/heads/master", "1", false, false, false, false, []byte{120, 94, 74, 203, 207, 7, 4, 0, 0, 255, 255, 2, 130, 1, 69})
+
 	// ensure the mock expects the query
-	_mock.ExpectExec(`UPDATE "pipelines"
-SET "repo_id"=$1,"number"=$2,"flavor"=$3,"platform"=$4,"ref"=$5,"version"=$6,"services"=$7,"stages"=$8,"steps"=$9,"templates"=$10,"data"=$11
-WHERE "id" = $12`).
-		WithArgs(1, 1, nil, nil, "refs/heads/master", "1", false, false, false, false, AnyArgument{}, 1).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	_mock.ExpectQuery(`SELECT * FROM "pipelines" WHERE repo_id = $1 AND number = $2 LIMIT 1`).
+		WithArgs(1, 1).WillReturnRows(_rows)
 
 	_sqlite := testSqlite(t)
 	defer func() { _sql, _ := _sqlite.client.DB(); _sql.Close() }()
@@ -42,33 +47,40 @@ WHERE "id" = $12`).
 		failure  bool
 		name     string
 		database *engine
+		want     *library.Pipeline
 	}{
 		{
 			failure:  false,
 			name:     "postgres",
 			database: _postgres,
+			want:     _pipeline,
 		},
 		{
 			failure:  false,
 			name:     "sqlite",
 			database: _sqlite,
+			want:     _pipeline,
 		},
 	}
 
 	// run tests
 	for _, test := range tests {
-		err = test.database.UpdatePipeline(_pipeline)
+		got, err := test.database.GetPipelineForRepo(1, &library.Repo{ID: _pipeline.RepoID})
 
 		if test.failure {
 			if err == nil {
-				t.Errorf("UpdatePipeline for %s should have returned err", test.name)
+				t.Errorf("GetPipelineForRepo for %s should have returned err", test.name)
 			}
 
 			continue
 		}
 
 		if err != nil {
-			t.Errorf("UpdatePipeline for %s returned err: %v", test.name, err)
+			t.Errorf("GetPipelineForRepo for %s returned err: %v", test.name, err)
+		}
+
+		if !reflect.DeepEqual(got, test.want) {
+			t.Errorf("GetPipelineForRepo for %s is %v, want %v", test.name, got, test.want)
 		}
 	}
 }

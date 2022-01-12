@@ -266,19 +266,6 @@ func CreateBuild(c *gin.Context) {
 		return
 	}
 
-	pipeline.SetRepoID(r.GetID())
-	pipeline.SetRef(input.GetRef())
-
-	// send API call to create the pipeline
-	err = database.FromContext(c).CreatePipeline(pipeline)
-	if err != nil {
-		retErr := fmt.Errorf("failed to create pipeline for %s/%d: %v", r.GetFullName(), input.GetNumber(), err)
-
-		util.HandleError(c, http.StatusBadRequest, retErr)
-
-		return
-	}
-
 	// skip the build if only the init or clone steps are found
 	skip := skipEmptyBuild(p)
 	if skip != "" {
@@ -295,6 +282,47 @@ func CreateBuild(c *gin.Context) {
 		c.JSON(http.StatusOK, skip)
 		return
 	}
+
+	// send API call to capture the last pipeline for the repo
+	lastPipeline, err := database.FromContext(c).LastPipelineForRepo(r)
+	if err != nil {
+		retErr := fmt.Errorf("unable to get last pipeline for %s: %w", r.GetFullName(), err)
+
+		util.HandleError(c, http.StatusInternalServerError, retErr)
+
+		return
+	}
+
+	pipeline.SetRepoID(r.GetID())
+	pipeline.SetNumber(1)
+	pipeline.SetRef(input.GetRef())
+
+	if lastPipeline != nil {
+		pipeline.SetNumber(lastPipeline.GetNumber() + 1)
+	}
+
+	// send API call to create the pipeline
+	err = database.FromContext(c).CreatePipeline(pipeline)
+	if err != nil {
+		retErr := fmt.Errorf("failed to create pipeline for %s/%d: %v", r.GetFullName(), input.GetNumber(), err)
+
+		util.HandleError(c, http.StatusBadRequest, retErr)
+
+		return
+	}
+
+	// send API call to capture the created pipeline
+	pipeline, err = database.FromContext(c).GetPipelineForRepo(pipeline.GetNumber(), r)
+	if err != nil {
+		// nolint: lll // ignore long line length due to error message
+		retErr := fmt.Errorf("%s: failed to get new pipeline %s/%d: %v", baseErr, r.GetFullName(), pipeline.GetNumber(), err)
+
+		util.HandleError(c, http.StatusInternalServerError, retErr)
+
+		return
+	}
+
+	input.SetPipelineID(pipeline.GetID())
 
 	// create the objects from the pipeline in the database
 	err = planBuild(database.FromContext(c), p, input, r)
@@ -963,7 +991,7 @@ func RestartBuild(c *gin.Context) {
 	}
 
 	// send API call to capture the pipeline
-	pipeline, err := database.FromContext(c).GetPipeline(b.GetRef(), r)
+	pipeline, err := database.FromContext(c).GetPipeline(b.GetPipelineID())
 	if err != nil {
 		retErr := fmt.Errorf("unable to get pipeline for %s: %w", entry, err)
 
@@ -988,6 +1016,8 @@ func RestartBuild(c *gin.Context) {
 		return
 	}
 
+	// TODO: can this be removed?
+	//
 	// skip the build if only the init or clone steps are found
 	skip := skipEmptyBuild(p)
 	if skip != "" {

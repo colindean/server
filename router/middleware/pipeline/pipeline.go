@@ -7,6 +7,7 @@ package pipeline
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-vela/server/database"
@@ -47,19 +48,28 @@ func Establish() gin.HandlerFunc {
 			return
 		}
 
+		number, err := strconv.Atoi(p)
+		if err != nil {
+			retErr := fmt.Errorf("invalid pipeline parameter provided: %s", p)
+
+			util.HandleError(c, http.StatusBadRequest, retErr)
+
+			return
+		}
+
 		// update engine logger with API metadata
 		//
 		// https://pkg.go.dev/github.com/sirupsen/logrus?tab=doc#Entry.WithFields
 		logrus.WithFields(logrus.Fields{
 			"org":      o,
-			"pipeline": p,
+			"pipeline": number,
 			"repo":     r.GetName(),
 			"user":     u.GetName(),
-		}).Debugf("reading pipeline %s/%s", r.GetFullName(), p)
+		}).Debugf("reading pipeline %s/%d", r.GetFullName(), number)
 
-		pipeline, err := database.FromContext(c).GetPipeline(p, r)
+		pipeline, err := database.FromContext(c).GetPipelineForRepo(number, r)
 		if err != nil {
-			retErr := fmt.Errorf("unable to read pipeline %s/%s: %v", r.GetFullName(), p, err)
+			retErr := fmt.Errorf("unable to read pipeline %s/%d: %v", r.GetFullName(), number, err)
 
 			util.HandleError(c, http.StatusNotFound, retErr)
 

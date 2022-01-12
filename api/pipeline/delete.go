@@ -66,14 +66,14 @@ func DeletePipeline(c *gin.Context) {
 	r := repo.Retrieve(c)
 	u := user.Retrieve(c)
 
-	entry := fmt.Sprintf("%s/%s", r.GetFullName(), p.GetRef())
+	entry := fmt.Sprintf("%s/%d", r.GetFullName(), p.GetNumber())
 
 	// update engine logger with API metadata
 	//
 	// https://pkg.go.dev/github.com/sirupsen/logrus?tab=doc#Entry.WithFields
 	logrus.WithFields(logrus.Fields{
 		"org":      o,
-		"pipeline": p.GetRef(),
+		"pipeline": p.GetNumber(),
 		"repo":     r.GetName(),
 		"user":     u.GetName(),
 	}).Infof("deleting pipeline %s", entry)

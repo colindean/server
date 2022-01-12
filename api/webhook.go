@@ -462,21 +462,6 @@ func PostWebhook(c *gin.Context) {
 			return
 		}
 
-		pipeline.SetRepoID(r.GetID())
-		pipeline.SetRef(b.GetRef())
-
-		// send API call to create the pipeline
-		err = database.FromContext(c).CreatePipeline(pipeline)
-		if err != nil {
-			retErr := fmt.Errorf("%s: failed to create pipeline for %s: %v", baseErr, r.GetFullName(), err)
-			util.HandleError(c, http.StatusBadRequest, retErr)
-
-			h.SetStatus(constants.StatusFailure)
-			h.SetError(retErr.Error())
-
-			return
-		}
-
 		// skip the build if only the init or clone steps are found
 		skip := skipEmptyBuild(p)
 		if skip != "" {
@@ -492,6 +477,50 @@ func PostWebhook(c *gin.Context) {
 			c.JSON(http.StatusOK, skip)
 			return
 		}
+
+		// send API call to capture the last pipeline for the repo
+		lastPipeline, err := database.FromContext(c).LastPipelineForRepo(r)
+		if err != nil {
+			retErr := fmt.Errorf("unable to get last pipeline for %s: %w", r.GetFullName(), err)
+
+			util.HandleError(c, http.StatusInternalServerError, retErr)
+
+			return
+		}
+
+		pipeline.SetRepoID(r.GetID())
+		pipeline.SetRef(b.GetRef())
+
+		if lastPipeline != nil {
+			pipeline.SetNumber(lastPipeline.GetNumber() + 1)
+		}
+
+		// send API call to create the pipeline
+		err = database.FromContext(c).CreatePipeline(pipeline)
+		if err != nil {
+			retErr := fmt.Errorf("%s: failed to create pipeline for %s: %v", baseErr, r.GetFullName(), err)
+			util.HandleError(c, http.StatusBadRequest, retErr)
+
+			h.SetStatus(constants.StatusFailure)
+			h.SetError(retErr.Error())
+
+			return
+		}
+
+		// send API call to capture the created pipeline
+		pipeline, err = database.FromContext(c).GetPipelineForRepo(pipeline.GetNumber(), r)
+		if err != nil {
+			// nolint: lll // ignore long line length due to error message
+			retErr := fmt.Errorf("%s: failed to get new pipeline %s/%d: %v", baseErr, r.GetFullName(), pipeline.GetNumber(), err)
+			util.HandleError(c, http.StatusInternalServerError, retErr)
+
+			h.SetStatus(constants.StatusFailure)
+			h.SetError(retErr.Error())
+
+			return
+		}
+
+		b.SetPipelineID(pipeline.GetID())
 
 		// create the objects from the pipeline in the database
 		err = planBuild(database.FromContext(c), p, b, r)

@@ -75,14 +75,14 @@ func UpdatePipeline(c *gin.Context) {
 	r := repo.Retrieve(c)
 	u := user.Retrieve(c)
 
-	entry := fmt.Sprintf("%s/%s", r.GetFullName(), p.GetRef())
+	entry := fmt.Sprintf("%s/%d", r.GetFullName(), p.GetNumber())
 
 	// update engine logger with API metadata
 	//
 	// https://pkg.go.dev/github.com/sirupsen/logrus?tab=doc#Entry.WithFields
 	logrus.WithFields(logrus.Fields{
 		"org":      o,
-		"pipeline": p.GetRef(),
+		"pipeline": p.GetNumber(),
 		"repo":     r.GetName(),
 		"user":     u.GetName(),
 	}).Infof("updating pipeline %s", entry)
@@ -164,7 +164,7 @@ func UpdatePipeline(c *gin.Context) {
 	}
 
 	// send API call to capture the updated pipeline
-	p, err = database.FromContext(c).GetPipeline(p.GetRef(), r)
+	p, err = database.FromContext(c).GetPipelineForRepo(p.GetNumber(), r)
 	if err != nil {
 		retErr := fmt.Errorf("unable to capture pipeline %s: %w", entry, err)
 

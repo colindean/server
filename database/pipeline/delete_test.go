@@ -15,6 +15,7 @@ func TestPipeline_Engine_DeletePipeline(t *testing.T) {
 	_pipeline := testPipeline()
 	_pipeline.SetID(1)
 	_pipeline.SetRepoID(1)
+	_pipeline.SetNumber(1)
 	_pipeline.SetRef("refs/heads/master")
 	_pipeline.SetVersion("1")
 

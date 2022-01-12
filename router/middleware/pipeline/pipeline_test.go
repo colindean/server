@@ -16,6 +16,7 @@ import (
 	"github.com/go-vela/server/router/middleware/org"
 	"github.com/go-vela/server/router/middleware/repo"
 	"github.com/go-vela/types/library"
+	"github.com/kr/pretty"
 )
 
 func TestPipeline_Retrieve(t *testing.T) {
@@ -64,7 +65,16 @@ func TestPipeline_Establish(t *testing.T) {
 	want := new(library.Pipeline)
 	want.SetID(1)
 	want.SetRepoID(1)
-	want.SetRef("")
+	want.SetNumber(1)
+	want.SetFlavor("")
+	want.SetPlatform("")
+	want.SetRef("refs/heads/master")
+	want.SetVersion("1")
+	want.SetServices(false)
+	want.SetStages(false)
+	want.SetSteps(false)
+	want.SetTemplates(false)
+	want.SetData([]byte{})
 
 	got := new(library.Pipeline)
 
@@ -107,6 +117,7 @@ func TestPipeline_Establish(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(got, want) {
+		pretty.Ldiff(t, got, want)
 		t.Errorf("Establish is %v, want %v", got, want)
 	}
 }

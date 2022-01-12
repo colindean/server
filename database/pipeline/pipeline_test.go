@@ -117,6 +117,7 @@ func testPipeline() *library.Pipeline {
 	return &library.Pipeline{
 		ID:        new(int64),
 		RepoID:    new(int64),
+		Number:    new(int),
 		Flavor:    new(string),
 		Platform:  new(string),
 		Ref:       new(string),

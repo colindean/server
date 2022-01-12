@@ -13,10 +13,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// GetPipeline gets a pipeline by number and repo ID from the database.
-func (e *engine) GetPipeline(id int64) (*library.Pipeline, error) {
+// GetPipelineForRepo gets a pipeline by number and repo ID from the database.
+func (e *engine) GetPipelineForRepo(number int, r *library.Repo) (*library.Pipeline, error) {
 	// TODO: figure this out
-	//c.Logger.Tracef("getting pipeline %d from the database", id)
+	//c.Logger.WithFields(logrus.Fields{
+	//	"pipeline": number,
+	//	"org":      r.GetOrg(),
+	//	"repo":     r.GetName(),
+	//}).Tracef("getting pipeline %s/%s from the database", r.GetFullName(), number)
 
 	// variable to store query results
 	p := new(database.Pipeline)
@@ -24,7 +28,8 @@ func (e *engine) GetPipeline(id int64) (*library.Pipeline, error) {
 	// send query to the database and store result in variable
 	result := e.client.
 		Table(constants.TablePipeline).
-		Where("id = ?", id).
+		Where("repo_id = ?", r.GetID()).
+		Where("number = ?", number).
 		Limit(1).
 		Scan(p)
 

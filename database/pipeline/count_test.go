@@ -16,12 +16,14 @@ func TestPipeline_Engine_CountPipelines(t *testing.T) {
 	_pipelineOne := testPipeline()
 	_pipelineOne.SetID(1)
 	_pipelineOne.SetRepoID(1)
+	_pipelineOne.SetNumber(1)
 	_pipelineOne.SetRef("refs/heads/master")
 	_pipelineOne.SetVersion("1")
 
 	_pipelineTwo := testPipeline()
 	_pipelineTwo.SetID(2)
 	_pipelineTwo.SetRepoID(2)
+	_pipelineTwo.SetNumber(1)
 	_pipelineTwo.SetRef("refs/heads/main")
 	_pipelineTwo.SetVersion("1")
 

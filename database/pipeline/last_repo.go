@@ -13,10 +13,13 @@ import (
 	"gorm.io/gorm"
 )
 
-// GetPipeline gets a pipeline by number and repo ID from the database.
-func (e *engine) GetPipeline(id int64) (*library.Pipeline, error) {
+// LastPipelineForRepo gets the last pipeline by repo ID from the database.
+func (e *engine) LastPipelineForRepo(r *library.Repo) (*library.Pipeline, error) {
 	// TODO: figure this out
-	//c.Logger.Tracef("getting pipeline %d from the database", id)
+	//c.Logger.WithFields(logrus.Fields{
+	//	"org":      r.GetOrg(),
+	//	"repo":     r.GetName(),
+	//}).Tracef("getting last pipeline for repo %s from the database", r.GetFullName())
 
 	// variable to store query results
 	p := new(database.Pipeline)
@@ -24,13 +27,15 @@ func (e *engine) GetPipeline(id int64) (*library.Pipeline, error) {
 	// send query to the database and store result in variable
 	result := e.client.
 		Table(constants.TablePipeline).
-		Where("id = ?", id).
+		Where("repo_id = ?", r.GetID()).
+		Order("number DESC").
 		Limit(1).
 		Scan(p)
 
 	// check if the query returned a record not found error or no rows were returned
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) || result.RowsAffected == 0 {
-		return nil, gorm.ErrRecordNotFound
+		// the record will not exist if it's a new repo
+		return nil, nil
 	}
 
 	// decompress data for the pipeline
