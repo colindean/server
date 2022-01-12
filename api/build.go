@@ -295,7 +295,8 @@ func CreateBuild(c *gin.Context) {
 
 	pipeline.SetRepoID(r.GetID())
 	pipeline.SetNumber(1)
-	pipeline.SetRef(input.GetRef())
+	pipeline.SetRef(input.GetCommit())
+	pipeline.SetType(r.GetPipelineType())
 
 	if lastPipeline != nil {
 		pipeline.SetNumber(lastPipeline.GetNumber() + 1)
@@ -1000,6 +1001,11 @@ func RestartBuild(c *gin.Context) {
 		return
 	}
 
+	// capture the original pipeline type for the repo
+	originalType := r.GetPipelineType()
+	// ensure we use the expected pipeline type when compiling
+	r.SetPipelineType(pipeline.GetType())
+
 	// parse and compile the pipeline configuration file
 	p, _, err := compiler.FromContext(c).
 		WithBuild(b).
@@ -1015,6 +1021,9 @@ func RestartBuild(c *gin.Context) {
 
 		return
 	}
+
+	// reset the pipeline type for the repo
+	r.SetPipelineType(originalType)
 
 	// TODO: can this be removed?
 	//

@@ -18,7 +18,8 @@ func TestPipeline_Engine_LastPipelineForRepo(t *testing.T) {
 	_pipelineOne.SetID(1)
 	_pipelineOne.SetRepoID(1)
 	_pipelineOne.SetNumber(1)
-	_pipelineOne.SetRef("refs/heads/master")
+	_pipelineOne.SetRef("48afb5bdc41ad69bf22588491333f7cf71135163")
+	_pipelineOne.SetType("yaml")
 	_pipelineOne.SetVersion("1")
 	_pipelineOne.SetData([]byte("foo"))
 
@@ -26,7 +27,8 @@ func TestPipeline_Engine_LastPipelineForRepo(t *testing.T) {
 	_pipelineTwo.SetID(2)
 	_pipelineTwo.SetRepoID(1)
 	_pipelineTwo.SetNumber(2)
-	_pipelineTwo.SetRef("refs/heads/main")
+	_pipelineTwo.SetRef("48afb5bdc41ad69bf22588491333f7cf71135163")
+	_pipelineTwo.SetType("yaml")
 	_pipelineTwo.SetVersion("1")
 	_pipelineTwo.SetData([]byte("foo"))
 
@@ -35,8 +37,8 @@ func TestPipeline_Engine_LastPipelineForRepo(t *testing.T) {
 
 	// create expected result in mock
 	_rows := sqlmock.NewRows(
-		[]string{"id", "repo_id", "number", "flavor", "platform", "ref", "version", "services", "stages", "steps", "templates", "data"}).
-		AddRow(2, 1, 2, "", "", "refs/heads/main", "1", false, false, false, false, []byte{120, 94, 74, 203, 207, 7, 4, 0, 0, 255, 255, 2, 130, 1, 69})
+		[]string{"id", "repo_id", "number", "flavor", "platform", "ref", "type", "version", "services", "stages", "steps", "templates", "data"}).
+		AddRow(2, 1, 2, "", "", "48afb5bdc41ad69bf22588491333f7cf71135163", "yaml", "1", false, false, false, false, []byte{120, 94, 74, 203, 207, 7, 4, 0, 0, 255, 255, 2, 130, 1, 69})
 
 	// ensure the mock expects the query
 	_mock.ExpectQuery(`SELECT * FROM "pipelines" WHERE repo_id = $1 ORDER BY number DESC LIMIT 1`).

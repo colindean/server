@@ -121,6 +121,7 @@ func testPipeline() *library.Pipeline {
 		Flavor:    new(string),
 		Platform:  new(string),
 		Ref:       new(string),
+		Type:      new(string),
 		Version:   new(string),
 		Services:  new(bool),
 		Stages:    new(bool),
