@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-vela/server/database/pipeline"
 	"github.com/go-vela/server/database/postgres/ddl"
 	"github.com/go-vela/types/constants"
 	"github.com/sirupsen/logrus"
@@ -40,6 +41,7 @@ type (
 		Postgres *gorm.DB
 		// https://pkg.go.dev/github.com/sirupsen/logrus#Entry
 		Logger *logrus.Entry
+		pipeline.PipelineService
 	}
 )
 
@@ -88,6 +90,8 @@ func New(opts ...ClientOpt) (*client, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	c.PipelineService = pipeline.New(_postgres, c.config.CompressionLevel)
 
 	return c, nil
 }
