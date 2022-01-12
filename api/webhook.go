@@ -489,6 +489,7 @@ func PostWebhook(c *gin.Context) {
 		}
 
 		pipeline.SetRepoID(r.GetID())
+		pipeline.SetNumber(1)
 		pipeline.SetRef(b.GetRef())
 
 		if lastPipeline != nil {
